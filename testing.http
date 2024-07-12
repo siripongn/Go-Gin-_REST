@@ -15,3 +15,21 @@ Content-Type: application/json
 ###
 
 DELETE http://localhost:8080/users/2
+###
+
+
+GET http://localhost:8080/movies
+###
+
+POST http://localhost:8080/movies
+Content-Type: application/json
+
+{
+   "id" : "5",
+   "title" : "Micheal  Boy",
+   " director" : "Tansformers dark of the mood",
+}
+###
+
+GET http://localhost:8080/movies/1
+###

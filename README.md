@@ -1,6 +1,10 @@
 "# Go-Gin-_REST" 
 
-go mod init example.com/m
+git add .
+git commit -m "go rest commit"
+git push -u origin main
+
+go mod init testing/new
 
 go get
 go mod tidy
@@ -14,6 +18,15 @@ mysql -u root -p
 
 CREATE DATABASE test;
 use test;
+
+CREATE TABLE posts (
+  id serial primary key,
+  username varchar(255) not null,
+  title varchar(100) not null,
+  content text not null,
+  created_at timestamptz not null default clock_timestamp(),
+  updated_at timestamptz
+);
 
 CREATE TABLE quote
 ( id INT(11) NOT NULL AUTO_INCREMENT , 
@@ -46,11 +59,11 @@ INSERT INTO quote (id, quote, author) VALUES
 SELECT * FROM quote;
 
 
-CREATE TABLE IF NOT EXISTS users (
-id int(11) NOT NULL,
+CREATE TABLE IF NOT EXISTS users-test (
+id int(11) NOT NULL AUTO_INCREMENT ,
 name varchar(200) NOT NULL,
-email varchar(200) NOT NULL,
-created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+description varchar(200) NOT NULL,
+PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 ALTER TABLE users ADD PRIMARY KEY (id);
 ALTER TABLE users MODIFY id int(11) NOT NULL AUTO_INCREMENT;
@@ -63,3 +76,44 @@ INSERT INTO users (id, name, email, created_at) VALUES
   (5, 'mhd', 'mhd@g.co', '2019-02-28 13:20:20');
 
 SELECT * FROM users;
+
+
+CREATE TABLE IF NOT EXISTS user_test (
+id int(11) NOT NULL AUTO_INCREMENT ,
+name varchar(200) NOT NULL,
+description varchar(200) NOT NULL,
+PRIMARY KEY (id)
+) ENGINE = InnoDB CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;
+
+INSERT INTO user_test (id, name, description) VALUES
+  (1, 'Test no.1', 'king'),
+  (2, 'Test no.2', 'queen'),
+  (3, 'Test no.3', 'jack');
+
+SELECT * FROM user_test;
+
+CREATE DATABASE movies;
+use movies;
+CREATE TABLE movies (  
+  id int(5) DEFAULT NULL, 
+  title varchar(255) DEFAULT NULL, 
+  director varchar(255) DEFAULT NULL ) 
+  ENGINE=InnoDB DEFAULT CHARSET= utf8;
+
+DESCRIBE movies;
+
+INSERT INTO movies VALUES (
+  '01','jurrasic Park','steven Spielberg');
+
+SELECT * FROM movies
+
+curl http://localhost:8080/users \
+    --include \
+    --header "Content-Type: application/json" \
+    --request "GET"
+
+curl http://localhost:8080/users \
+    --include \
+    --header "Content-Type: application/json" \
+    --request "POST" \
+    --data '{"id": "5","name": "test no.5","description": "nothing"}'
