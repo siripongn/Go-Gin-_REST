@@ -14,8 +14,6 @@ func main() {
 	/*e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, World!")
 	})*/
-
-	//กำหนด Route ก่อนเลย พร้อมให้ call ไปยัง func ต่างๆ
 	h := UserTestHandler{}
 	h.Initialize()
 
