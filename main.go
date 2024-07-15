@@ -1,115 +1,262 @@
 package main
 
 import (
-	"log"
-	"net/http"
-
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/mysql"
-	"github.com/labstack/echo"
+	"github.com/gin-gonic/gin"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 )
 
-func main() {
-	e := echo.New()
-	/*e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello, World!")
-	})*/
-	h := UserTestHandler{}
-	h.Initialize()
-
-	e.GET("/user-test", h.GetAllUserTest)
-	e.POST("/user-test", h.SaveUserTest)
-	e.GET("user-test/:id", h.GetUserTest)
-	e.PUT("/user-test/:id", h.UpdateUserTest)
-	e.DELETE("/user-test/:id", h.DeleteUserTest)
-
-	e.Logger.Fatal(e.Start(":8800"))
-}
-
-type UserTestHandler struct {
-	DB *gorm.DB
-}
-
-// ให้เชื่อมต่อฐานข้อมูลเมื่อ Initialize
-func (h *UserTestHandler) Initialize() {
-	db, err := gorm.Open("mysql", "root:mysql#pass@tcp(127.0.0.1:3306)/test?charset=utf8&parseTime=True")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	db.AutoMigrate(&User{})
-
-	h.DB = db
-}
+var db *sqlx.DB
+var err error
 
 type User struct {
-	Id          uint   `gorm:"primary_key" json:"id"`
-	Name        string `json:"firstName"`
-	Description string `json:"lastName"`
+	ID          int    `db:"id"`
+	Name        string `db:"name"`
+	Description string `db:"description"`
 }
 
-func (h *UserTestHandler) GetAllUserTest(c echo.Context) error {
-	users := []User{}
+func main() {
+	// Connect to the MySQL database
+	db, err = sqlx.Connect("mysql", "root:mysql#pass@tcp(localhost:3306)/test")
+	if err != nil {
+		panic("Failed to connect to database")
+	}
+	defer db.Close()
 
-	h.DB.Find(&users)
+	r := gin.Default()
 
-	return c.JSON(http.StatusOK, users)
+	// Define routes that interact with the database
+	r.GET("/user-test", GetUsers)
+	r.POST("/user-test", CreateUser)
+
+	r.Run(":8800")
 }
 
-func (h *UserTestHandler) GetUserTest(c echo.Context) error {
-	id := c.Param("id")
-	user := User{}
-
-	if err := h.DB.Find(&user, id).Error; err != nil {
-		return c.NoContent(http.StatusNotFound)
+func GetUsers(c *gin.Context) {
+	var users []User
+	err := db.Select(&users, "SELECT id, name, description FROM user_test")
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Error retrieving users"})
+		return
 	}
-
-	return c.JSON(http.StatusOK, user)
+	c.JSON(200, users)
 }
 
-func (h *UserTestHandler) SaveUserTest(c echo.Context) error {
-	user := User{}
+func CreateUser(c *gin.Context) {
+	var user User
+	c.BindJSON(&user)
 
-	if err := c.Bind(&user); err != nil {
-		return c.NoContent(http.StatusBadRequest)
+	_, err := db.Exec("INSERT INTO user_test (name, description) VALUES (?, ?)", user.Name, user.Description)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Error creating user"})
+		return
 	}
-
-	if err := h.DB.Save(&user); err != nil {
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	return c.JSON(http.StatusOK, user)
+	c.JSON(200, user)
 }
 
-func (h *UserTestHandler) UpdateUserTest(c echo.Context) error {
-	id := c.Param("id")
-	user := User{}
+// import (
+// 	"net/http"
 
-	if err := h.DB.Find(&user, id).Error; err != nil {
-		return c.NoContent(http.StatusNotFound)
-	}
+// 	"github.com/gin-gonic/gin"
+// 	"gorm.io/gorm"
+// )
 
-	if err := c.Bind(&user).Error; err != nil {
-		return c.NoContent(http.StatusBadRequest)
-	}
+// func main() {
+// 	// db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+// 	db, err := gorm.Open("mysql", `root:mysql#pass@tcp(localhost:3306)/test?charset=utf8&parseTime=True`)
 
-	if err := h.DB.Save(&user).Error; err != nil {
-		return c.NoContent(http.StatusInternalServerError)
-	}
+// 	if err != nil {
+// 		panic("failed to connect database")
+// 	}
 
-	return c.JSON(http.StatusOK, user)
-}
+// 	db.AutoMigrate(&Book{})
 
-func (h *UserTestHandler) DeleteUserTest(c echo.Context) error {
-	id := c.Param("id")
-	user := User{}
+// 	handler := newHandler(db)
 
-	if err := h.DB.Find(&user, id).Error; err != nil {
-		return c.NoContent(http.StatusNotFound)
-	}
+// 	r := gin.New()
 
-	return c.NoContent(http.StatusNoContent)
-}
+// 	r.GET("/books", handler.listBooksHandler)
+// 	r.POST("/books", handler.createBookHandler)
+// 	r.DELETE("/books/:id", handler.deleteBookHandler)
+
+// 	r.Run()
+// }
+
+// type Handler struct {
+// 	db *gorm.DB
+// }
+
+// func newHandler(db *gorm.DB) *Handler {
+// 	return &Handler{db}
+// }
+
+// type Book struct {
+// 	ID     string `json:"id"`
+// 	Title  string `json:"title"`
+// 	Author string `json:"author"`
+// }
+
+// func (h *Handler) listBooksHandler(c *gin.Context) {
+// 	var books []Book
+
+// 	if result := h.db.Find(&books); result.Error != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{
+// 			"error": result.Error.Error(),
+// 		})
+// 		return
+// 	}
+
+// 	c.JSON(http.StatusOK, &books)
+// }
+
+// func (h *Handler) createBookHandler(c *gin.Context) {
+// 	var book Book
+
+// 	if err := c.ShouldBindJSON(&book); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{
+// 			"error": err.Error(),
+// 		})
+// 		return
+// 	}
+
+// 	if result := db.Create(&book); result.Error != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{
+// 			"error": result.Error.Error(),
+// 		})
+// 		return
+// 	}
+
+// 	c.JSON(http.StatusCreated, &book)
+// }
+
+// func (h *Handler) deleteBookHandler(c *gin.Context) {
+// 	id := c.Param("id")
+
+// 	if result := h.db.Delete(&Book{}, id); result.Error != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{
+// 			"error": result.Error.Error(),
+// 		})
+// 		return
+// 	}
+
+// 	c.Status(http.StatusNoContent)
+// }
+
+// import (
+// 	"log"
+// 	"net/http"
+
+// 	"github.com/labstack/echo"
+// 	"gorm.io/gorm"
+// )
+
+// func main() {
+// 	e := echo.New()
+// 	e.GET("/", func(c echo.Context) error {
+// 		return c.String(http.StatusOK, "Hello, World!")
+// 	})
+
+// 	h := CustomerHandler{}
+// 	h.Initialize()
+
+// 	e.GET("/customers", h.GetAllCustomer)
+// 	e.POST("/customers", h.SaveCustomer)
+// 	e.GET("/customers/:id", h.GetCustomer)
+// 	e.PUT("/customers/:id", h.UpdateCustomer)
+// 	e.DELETE("/customers/:id", h.DeleteCustomer)
+
+// 	e.Logger.Fatal(e.Start(":8800"))
+// }
+
+// type CustomerHandler struct {
+// 	DB *gorm.DB
+// }
+
+// func (h *CustomerHandler) Initialize() {
+// 	db, err := gorm.Open("mysql", `root:mysql#pass@tcp(localhost:3306)/test?charset=utf8&parseTime=True`)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+
+// 	db.AutoMigrate(&Customer{})
+
+// 	h.DB = db
+// }
+
+// type Customer struct {
+// 	Id        uint   `gorm:"primary_key" json:"id"`
+// 	FirstName string `json:"firstName"`
+// 	LastName  string `json:"lastName"`
+// 	Age       int    `json:"age"`
+// 	Email     string `json:"email"`
+// }
+
+// func (h *CustomerHandler) GetAllCustomer(c echo.Context) error {
+// 	customers := []Customer{}
+
+// 	h.DB.Find(&customers)
+
+// 	return c.JSON(http.StatusOK, customers)
+// }
+
+// func (h *CustomerHandler) GetCustomer(c echo.Context) error {
+// 	id := c.Param("id")
+// 	customer := Customer{}
+
+// 	if err := h.DB.Find(&customer, id).Error; err != nil {
+// 		return c.NoContent(http.StatusNotFound)
+// 	}
+
+// 	return c.JSON(http.StatusOK, customer)
+// }
+
+// func (h *CustomerHandler) SaveCustomer(c echo.Context) error {
+// 	customer := Customer{}
+
+// 	if err := c.Bind(&customer); err != nil {
+// 		return c.NoContent(http.StatusBadRequest)
+// 	}
+
+// 	if err := h.DB.Save(&customer).Error; err != nil {
+// 		return c.NoContent(http.StatusInternalServerError)
+// 	}
+
+// 	return c.JSON(http.StatusOK, customer)
+// }
+
+// func (h *CustomerHandler) UpdateCustomer(c echo.Context) error {
+// 	id := c.Param("id")
+// 	customer := Customer{}
+
+// 	if err := h.DB.Find(&customer, id).Error; err != nil {
+// 		return c.NoContent(http.StatusNotFound)
+// 	}
+
+// 	if err := c.Bind(&customer); err != nil {
+// 		return c.NoContent(http.StatusBadRequest)
+// 	}
+
+// 	if err := h.DB.Save(&customer).Error; err != nil {
+// 		return c.NoContent(http.StatusInternalServerError)
+// 	}
+
+// 	return c.JSON(http.StatusOK, customer)
+// }
+
+// func (h *CustomerHandler) DeleteCustomer(c echo.Context) error {
+// 	id := c.Param("id")
+// 	customer := Customer{}
+
+// 	if err := h.DB.Find(&customer, id).Error; err != nil {
+// 		return c.NoContent(http.StatusNotFound)
+// 	}
+
+// 	if err := h.DB.Delete(&customer).Error; err != nil {
+// 		return c.NoContent(http.StatusInternalServerError)
+// 	}
+
+// 	return c.NoContent(http.StatusNoContent)
+// }
 
 // import (
 // 	"database/sql"

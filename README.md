@@ -9,6 +9,10 @@ go mod init testing/new
 go get
 go mod tidy
 
+go install github.com/cosmtrek/air@latest
+air init
+air
+
 go run main.go
 
 docker pull mysql:latest
